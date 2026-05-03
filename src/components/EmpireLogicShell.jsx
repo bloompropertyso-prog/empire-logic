@@ -538,10 +538,93 @@ function SectionHeader({ icon: Icon, label, badge }) {
   );
 }
 
+/* ── Manual Sync Modal ── */
+function ManualSyncModal({ onSave, onClose }) {
+  const [revenue, setRevenue] = useState("");
+  const [clients, setClients] = useState("");
+
+  const handleSave = () => {
+    onSave({ revenue: revenue.trim(), clients: clients.trim() });
+    onClose();
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200,
+      background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: C.white, borderRadius: 18,
+        border: `1px solid ${C.creamDeep}`,
+        padding: "32px", width: 400,
+        boxShadow: "0 24px 64px rgba(0,0,0,0.14)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <BarChart2 size={16} color={C.gold} strokeWidth={1.5} />
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.ink }}>Manual Sync</h2>
+        </div>
+        <p style={{ margin: "0 0 24px", fontSize: 12, color: C.inkLight }}>
+          Update your dashboard with your latest numbers.
+        </p>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.inkMid, letterSpacing: "0.06em", marginBottom: 6 }}>
+            MONTHLY REVENUE ($)
+          </label>
+          <input
+            type="number" value={revenue}
+            onChange={(e) => setRevenue(e.target.value)}
+            placeholder="e.g. 12480"
+            style={{
+              width: "100%", padding: "11px 14px", borderRadius: 10,
+              border: `1px solid ${C.creamDeep}`, fontSize: 14, color: C.ink,
+              outline: "none", background: C.cream, fontFamily: "inherit", boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.inkMid, letterSpacing: "0.06em", marginBottom: 6 }}>
+            ACTIVE CLIENTS
+          </label>
+          <input
+            type="number" value={clients}
+            onChange={(e) => setClients(e.target.value)}
+            placeholder="e.g. 24"
+            style={{
+              width: "100%", padding: "11px 14px", borderRadius: 10,
+              border: `1px solid ${C.creamDeep}`, fontSize: 14, color: C.ink,
+              outline: "none", background: C.cream, fontFamily: "inherit", boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: "11px", borderRadius: 10,
+            border: `1px solid ${C.creamDeep}`, background: "transparent",
+            color: C.inkMid, fontSize: 13, fontWeight: 500, cursor: "pointer",
+          }}>Cancel</button>
+          <button onClick={handleSave} style={{
+            flex: 2, padding: "11px", borderRadius: 10,
+            border: `1px solid ${C.goldBorder}`,
+            background: `linear-gradient(135deg, ${C.gold}, #E8C96A)`,
+            color: C.obsidian, fontSize: 13, fontWeight: 700, cursor: "pointer",
+            boxShadow: "0 2px 12px rgba(201,168,76,0.3)",
+          }}>Sync Dashboard</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Root Component ─────────────────────────────────────────────────── */
 export default function EmpireLogicShell() {
   const [activeNav,   setActiveNav]   = useState("command");
   const [energyLevel, setEnergyLevel] = useState(3);
+  const [showSync,    setShowSync]    = useState(false);
+  const [liveStats,   setLiveStats]   = useState({ revenue: 12480, clients: 24 });
 
   /*
     Each mode maintains its own independent task state so that checking off
@@ -575,6 +658,13 @@ export default function EmpireLogicShell() {
       ? greetCfg.headline("Bryttani")
       : greetCfg.headline("Bryttani", timeGreet());
 
+  /* Build live stats array from state */
+  const dynStats = STATS.map((s) => {
+    if (s.label === "Monthly Revenue") return { ...s, value: `$${Number(liveStats.revenue).toLocaleString()}` };
+    if (s.label === "Active Clients")  return { ...s, value: `${liveStats.clients}` };
+    return s;
+  });
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.cream, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <style>{`
@@ -582,7 +672,21 @@ export default function EmpireLogicShell() {
         * { box-sizing: border-box; }
         button { font-family: inherit; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
+
+      {/* Manual Sync Modal */}
+      {showSync && (
+        <ManualSyncModal
+          onSave={({ revenue, clients }) => {
+            setLiveStats({
+              revenue: revenue || liveStats.revenue,
+              clients: clients || liveStats.clients,
+            });
+          }}
+          onClose={() => setShowSync(false)}
+        />
+      )}
 
       {/* ── Sidebar — always visible, energy toggle lives here ── */}
       <Sidebar
@@ -635,8 +739,23 @@ export default function EmpireLogicShell() {
             </p>
           </div>
 
-          {/* Right cluster — energy toggle now lives in sidebar */}
+          {/* Right cluster */}
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* Manual Sync button */}
+            <button
+              onClick={() => setShowSync(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "8px 16px", borderRadius: 20,
+                background: C.obsidian, border: `1px solid ${C.goldBorder}`,
+                color: C.gold, fontSize: 11, fontWeight: 600,
+                cursor: "pointer", letterSpacing: "0.04em",
+                transition: "all 0.15s",
+              }}
+            >
+              <BarChart2 size={12} color={C.gold} />
+              Manual Sync
+            </button>
             <VaultBadge />
             {/* Current energy pill — read-only display, toggle is in sidebar */}
             <div style={{
@@ -679,7 +798,7 @@ export default function EmpireLogicShell() {
           <section>
             <SectionHeader icon={TrendingUp} label="Financial & Growth" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-              {STATS.map((s) => <StatCard key={s.label} stat={s} />)}
+              {dynStats.map((s) => <StatCard key={s.label} stat={s} />)}
             </div>
             {/* Milestone card */}
             <div style={{

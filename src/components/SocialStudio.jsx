@@ -283,6 +283,121 @@ const ENERGY_SUGGESTIONS = {
   ],
 };
 
+/* ─── Hook of the Day Data ───────────────────────────────────────── */
+const HOOKS = {
+  1: [
+    "The quiet days built the empire too.",
+    "Rest is a revenue strategy.",
+    "Even on slow days — you're still in the game.",
+  ],
+  2: [
+    "Small moves, consistently, compound.",
+    "One email. One follow-up. One step closer.",
+    "Not every day is a launch day. This one's for maintenance.",
+  ],
+  3: [
+    "What got you here won't get you there — but consistency will.",
+    "The client you follow up with today could close by Friday.",
+    "Your steadiest days create your most reliable income.",
+  ],
+  4: [
+    "The version of you who built this deserves to go further.",
+    "Your competitors aren't resting. Neither are you.",
+    "Deep work today is revenue next month.",
+  ],
+  5: [
+    "You didn't come this far to play small — post, pitch, close.",
+    "Nobody remembers the founder who stayed quiet. Show up.",
+    "Empire mode means you move like it's already done.",
+  ],
+};
+
+function HookOfTheDay({ energyLevel }) {
+  const hooks   = HOOKS[energyLevel] || HOOKS[3];
+  const isEmpire = energyLevel === 5;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div style={{
+      margin: "0 36px 0",
+      padding: "22px 26px",
+      borderRadius: 14,
+      background: isEmpire ? C.obsidian : C.white,
+      border: `1px solid ${isEmpire ? C.goldBorder : C.creamDeep}`,
+      boxShadow: isEmpire ? "0 0 0 1px rgba(201,168,76,0.15), 0 4px 24px rgba(0,0,0,0.12)" : "none",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <Flame size={13} color={isEmpire ? C.gold : C.inkMid} strokeWidth={1.5} />
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+          color: isEmpire ? C.gold : C.inkMid,
+        }}>
+          HOOK OF THE DAY — LEVEL {energyLevel}
+        </span>
+        {isEmpire && (
+          <span style={{
+            marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#8A3A2A",
+            background: "rgba(160,90,70,0.15)", padding: "2px 8px", borderRadius: 10,
+            letterSpacing: "0.08em",
+          }}>
+            EMPIRE MODE
+          </span>
+        )}
+      </div>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isEmpire ? "repeat(3, 1fr)" : "1fr",
+        gap: 12,
+      }}>
+        {(isEmpire ? hooks : [hooks[0]]).map((hook, i) => (
+          <div key={i} style={{
+            padding: "14px 16px", borderRadius: 10,
+            background: isEmpire ? "rgba(255,255,255,0.04)" : C.goldLight,
+            border: `1px solid ${isEmpire ? "rgba(255,255,255,0.07)" : C.goldBorder}`,
+            display: "flex", flexDirection: "column", gap: 10,
+          }}>
+            {isEmpire && (
+              <span style={{ fontSize: 9, color: C.gold, fontWeight: 700, letterSpacing: "0.08em" }}>
+                HOOK {i + 1}
+              </span>
+            )}
+            <p style={{
+              margin: 0, flex: 1,
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontSize: isEmpire ? 13 : 15,
+              fontWeight: 500, lineHeight: 1.5,
+              color: isEmpire ? C.white : C.ink,
+            }}>
+              "{hook}"
+            </p>
+            <button
+              onClick={() => handleCopy(hook)}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "6px 10px", borderRadius: 7, border: `1px solid ${isEmpire ? "rgba(255,255,255,0.1)" : C.goldBorder}`,
+                background: "transparent",
+                color: isEmpire ? "#6A6A6A" : "#9A7A2A",
+                fontSize: 10, fontWeight: 500, cursor: "pointer",
+                width: "fit-content",
+              }}
+            >
+              {copied ? <Check size={10} /> : <Copy size={10} />}
+              {copied ? "Copied" : "Use this hook"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Component ──────────────────────────────────────────────────── */
 export default function SocialStudio({ energyLevel }) {
   const [tone,         setTone]         = useState("authority");
@@ -407,6 +522,9 @@ export default function SocialStudio({ energyLevel }) {
           </div>
         </div>
       </div>
+
+      {/* ── Hook of the Day ── */}
+      <HookOfTheDay energyLevel={energyLevel} />
 
       {/* ── Main Body ── */}
       {activeTab === "write" ? (

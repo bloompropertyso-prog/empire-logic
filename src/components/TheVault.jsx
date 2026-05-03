@@ -16,6 +16,9 @@ import {
   Lock,
   AlertCircle,
   Eye,
+  Users,
+  BookOpen,
+  Layers,
 } from "lucide-react";
 
 /* ─── Design Tokens ──────────────────────────────────────────────── */
@@ -96,6 +99,52 @@ const INITIAL_CATEGORIES = [
       { id: "a2", label: "Professional Headshots",    done: true,  size: "22 MB",  date: "Mar 02" },
       { id: "a3", label: "Brand Photography",         done: false, size: null,     date: null     },
       { id: "a4", label: "Media Kit PDF",             done: false, size: null,     date: null     },
+    ],
+  },
+];
+
+/* ─── Client Success Folders ─────────────────────────────────────── */
+const CLIENT_SUCCESS_FOLDERS = [
+  {
+    id: "rosters",
+    label: "Active Rosters",
+    icon: Users,
+    color: "#7C9AFF",
+    colorBg: "rgba(124,154,255,0.10)",
+    desc: "Current client roster, contact details, and program assignments.",
+    docs: [
+      { id: "cr1", label: "Client Roster Q2 2026",        done: true,  size: "48 KB",  date: "May 01" },
+      { id: "cr2", label: "VIP Client Directory",          done: true,  size: "32 KB",  date: "Apr 28" },
+      { id: "cr3", label: "Client Progress Tracker",       done: false, size: null,     date: null     },
+      { id: "cr4", label: "Renewal & Retention Log",       done: false, size: null,     date: null     },
+    ],
+  },
+  {
+    id: "onboarding",
+    label: "Onboarding Flows",
+    icon: Layers,
+    color: "#6AC4A4",
+    colorBg: "rgba(106,196,164,0.10)",
+    desc: "Welcome sequences, intake forms, and onboarding SOPs.",
+    docs: [
+      { id: "ob1", label: "Client Welcome Packet",         done: true,  size: "1.2 MB", date: "Mar 15" },
+      { id: "ob2", label: "Intake Questionnaire",          done: true,  size: "64 KB",  date: "Mar 15" },
+      { id: "ob3", label: "Onboarding SOP",                done: false, size: null,     date: null     },
+      { id: "ob4", label: "First 30-Day Roadmap Template", done: false, size: null,     date: null     },
+    ],
+  },
+  {
+    id: "curriculum",
+    label: "Program Curriculum",
+    icon: BookOpen,
+    color: "#C47CA4",
+    colorBg: "rgba(196,124,164,0.10)",
+    desc: "Coaching frameworks, session guides, and program materials.",
+    docs: [
+      { id: "cu1", label: "Empire Logic Framework PDF",    done: true,  size: "3.4 MB", date: "Feb 20" },
+      { id: "cu2", label: "90-Day Roadmap Template",       done: true,  size: "280 KB", date: "Mar 01" },
+      { id: "cu3", label: "Session Slide Decks",           done: false, size: null,     date: null     },
+      { id: "cu4", label: "Homework & Workbooks",          done: false, size: null,     date: null     },
     ],
   },
 ];
@@ -550,6 +599,118 @@ export default function TheVault() {
               onAddDoc={handleAddDoc}
             />
           ))}
+        </div>
+
+        {/* ── Client Success Section ── */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8,
+              background: "rgba(124,154,255,0.12)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Users size={14} color="#7C9AFF" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h2 style={{
+                margin: 0, fontSize: 14, fontWeight: 700, color: C.ink,
+                letterSpacing: "0.04em", textTransform: "uppercase",
+              }}>
+                Client Success
+              </h2>
+              <p style={{ margin: 0, fontSize: 11, color: C.inkLight }}>
+                Rosters, onboarding flows & program curriculum
+              </p>
+            </div>
+            <div style={{
+              marginLeft: "auto", padding: "4px 12px", borderRadius: 20,
+              background: "rgba(124,154,255,0.10)", border: "1px solid rgba(124,154,255,0.25)",
+              fontSize: 10, color: "#7C9AFF", fontWeight: 600, letterSpacing: "0.06em",
+            }}>
+              COACHING HUB
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {CLIENT_SUCCESS_FOLDERS.map((folder) => {
+              const Icon = folder.icon;
+              const done = folder.docs.filter((d) => d.done).length;
+              const pct  = Math.round((done / folder.docs.length) * 100);
+              return (
+                <div key={folder.id} style={{
+                  background: C.white, borderRadius: 14,
+                  border: `1px solid ${C.creamDeep}`,
+                  overflow: "hidden",
+                }}>
+                  {/* Folder header */}
+                  <div style={{ padding: "18px 20px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        background: folder.colorBg,
+                        border: `1px solid ${folder.color}33`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Icon size={16} color={folder.color} strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: C.ink }}>{folder.label}</h3>
+                        <p style={{ margin: "2px 0 0", fontSize: 10, color: C.inkLight }}>{done} of {folder.docs.length} items</p>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{ height: 3, borderRadius: 3, background: C.creamDeep, overflow: "hidden", marginBottom: 4 }}>
+                      <div style={{
+                        height: "100%", width: `${pct}%`, borderRadius: 3,
+                        background: pct >= 75 ? C.success : folder.color,
+                        transition: "width 0.5s ease",
+                      }} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 10, color: C.inkLight }}>{pct}% complete</p>
+                  </div>
+
+                  {/* Doc list */}
+                  <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.creamDeep}`, paddingTop: 12 }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 10, color: C.inkLight, lineHeight: 1.5 }}>{folder.desc}</p>
+                    {folder.docs.map((doc) => (
+                      <div key={doc.id} style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "6px 0", borderBottom: `1px solid ${C.creamDeep}`,
+                      }}>
+                        {doc.done
+                          ? <CheckCircle2 size={12} color={C.success} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                          : <Circle       size={12} color="#CCCCCC"   strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                        }
+                        <span style={{
+                          flex: 1, fontSize: 11, color: doc.done ? C.inkMid : C.inkLight,
+                          fontWeight: doc.done ? 500 : 400,
+                        }}>
+                          {doc.label}
+                        </span>
+                        {doc.done
+                          ? <span style={{ fontSize: 10, color: C.inkLight }}>{doc.date}</span>
+                          : <span style={{
+                              fontSize: 9, color: C.roseText, background: C.rose,
+                              padding: "1px 6px", borderRadius: 6, fontWeight: 600,
+                            }}>Missing</span>
+                        }
+                      </div>
+                    ))}
+                    <button style={{
+                      width: "100%", marginTop: 10, padding: "7px",
+                      borderRadius: 8, border: `1px dashed ${C.goldBorder}`,
+                      background: "transparent", color: C.gold,
+                      fontSize: 11, fontWeight: 500, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                    }}>
+                      <Plus size={11} color={C.gold} /> Add File
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Drop Zone ── */}
