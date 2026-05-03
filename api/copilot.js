@@ -1,114 +1,120 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-  if (!ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
-  }
+  const KEY = process.env.ANTHROPIC_API_KEY;
+  if (!KEY) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
 
-  const { type, context } = req.body || {};
+  const { type, context, messages } = req.body || {};
 
-  const leadList = (context?.leads || [])
-    .filter((l) => l.name)
-    .map((l) => `${l.name} ($${l.dealSize || "?"})`)
-    .join(", ") || "no leads entered yet";
+  const SYSTEM = "You are a sharp, direct COO-level business advisor. No fluff, no cheerleading. Give facts and next moves. Return only valid JSON when asked for JSON — no markdown fences, no extra text.";
 
-  const prompts = {
-    revenue_actions: `You are a sharp COO-level business advisor for a founder named ${context?.name || "the founder"}.
+  let userPrompt = "";
+  let isChat = false;
 
-Business snapshot:
-- Active leads: ${leadList}
-- Core offer price: $${context?.offerPrice || 1500}
-- Posting frequency: ${context?.postingFreq || 3} posts/week
-- Total pipeline value: $${context?.pipelineValue || 0}
-- Days since last follow-up logged: ${context?.daysSinceFollowup || 0}
-- Monthly revenue goal: $${context?.revenueGoal || 20000}
-- Current monthly revenue: $${context?.currentRevenue || 0}
+  if (type === "daily_actions") {
+    const leads = (context?.leads || [])
+      .filter(l => l.status !== "Closed" && l.status !== "Lost")
+      .map(l => `${l.name} (${l.status}, $${l.dealValue || "?"}, last contact: ${l.lastFollowUp || "unknown"})`)
+      .join(", ") || "no leads in system";
 
-Generate exactly 3 prioritized revenue actions for today, ranked by likely dollar impact. Be SPECIFIC — use lead names if provided. Each action must be executable within 2 hours. The impact number should be a realistic estimate of pipeline value this action could unlock or close.
+    userPrompt = `Business data:
+- Founder: ${context?.name || "the founder"}, ${context?.coachType || "coach/consultant"}
+- Revenue goal this month: $${context?.revenueGoal || 10000}
+- Income logged so far this month: $${context?.currentIncome || 0}
+- Remaining to hit goal: $${Math.max(0, (context?.revenueGoal || 10000) - (context?.currentIncome || 0))}
+- Days left in month: ${context?.daysLeft || 15}
+- Today's target (remaining ÷ days left): $${context?.todayTarget || 0}
+- Primary offer price: $${context?.offerPrice || 1500}
+- Active leads: ${leads}
 
-Return ONLY this JSON (no markdown, no extra text):
+Generate 3 specific daily revenue actions ranked by dollar impact. Use real lead names when referencing follow-ups. Each action must be doable in under 2 hours.
+
+Return ONLY this JSON:
 {
+  "todayTarget": ${context?.todayTarget || 0},
   "actions": [
-    { "rank": 1, "action": "specific executable task using real names if available", "impact": 4800, "why": "one direct sentence explaining why this is the highest leverage move" },
-    { "rank": 2, "action": "specific executable task", "impact": 1200, "why": "one direct sentence" },
-    { "rank": 3, "action": "specific executable task", "impact": 800, "why": "one direct sentence" }
+    { "rank": 1, "action": "specific task", "impact": 3000, "type": "follow_up" },
+    { "rank": 2, "action": "specific task", "impact": 1500, "type": "content" },
+    { "rank": 3, "action": "specific task", "impact": 500, "type": "outreach" }
   ],
-  "nonNegotiable": "6 words or less — the single most important thing they must do today"
-}`,
+  "topAction": "single most important action in 8 words or less"
+}`;
 
-    observations: `You are a sharp COO-level business advisor. No cheerleading. Generate 1-2 blunt, data-driven observations this founder needs to hear today.
+  } else if (type === "budget_insight") {
+    userPrompt = `Analyze this founder's financial data and give one sharp, specific insight.
 
-Business data:
-- Days since last follow-up logged: ${context?.daysSinceFollowup ?? 0}
-- Posts published this week: ${context?.postsThisWeek ?? 0}
-- Of those, posts WITH a CTA: ${context?.postsWithCTA ?? 0}
-- Average deal size: $${context?.avgDealSize ?? 0}
-- Monthly revenue goal: $${context?.monthlyGoal ?? 20000}
-- Current monthly revenue: $${context?.currentRevenue ?? 0}
-- Revenue-generating actions logged today: ${context?.actionsToday ?? 0}
-- Days since last revenue action (planning mode): ${context?.planningDays ?? 0}
-
-Rules: Be direct. Use their actual numbers. No fluff. COO tone, not motivational speaker.
-If data is sparse, give smart default observations about follow-up cadence and content CTAs.
+Month: ${context?.month}
+Total income: $${context?.totalIncome || 0}
+Total expenses: $${context?.totalExpenses || 0}
+Net profit: $${context?.netProfit || 0}
+Profit margin: ${context?.margin || 0}%
+Largest expense category: ${context?.topExpense || "unknown"}
+Revenue goal: $${context?.revenueGoal || 10000}
+Days elapsed in month: ${context?.daysElapsed || 15}
+Expected income by now (pro-rated): $${context?.expectedByNow || 0}
 
 Return ONLY this JSON:
 {
-  "observations": [
-    { "type": "warning", "text": "sharp, specific observation using their data" },
-    { "type": "insight", "text": "data-backed observation with a specific recommendation" }
-  ]
-}`,
+  "insight": "one or two sharp sentences with a specific observation and a concrete recommendation"
+}`;
 
-    weekly_insight: `Based on these logged business actions, generate one specific insight about what's performing best. Be precise — include percentages or rates if calculable.
-
-Action log: ${JSON.stringify(context?.actionLog || [])}
-
-Return ONLY this JSON:
-{
-  "insight": "one specific sentence with the key performance finding and a concrete recommendation to do more of it"
-}`,
-  };
-
-  const prompt = prompts[type];
-  if (!prompt) return res.status(400).json({ error: "Invalid type. Must be: revenue_actions, observations, or weekly_insight" });
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1024,
-        system:
-          "You are a sharp COO-level business advisor. Return ONLY valid JSON as specified — no markdown fences, no explanation, no extra keys. Just the raw JSON object.",
-        messages: [{ role: "user", content: prompt }],
-      }),
+  } else if (type === "lead_alerts") {
+    const leads = context?.leads || [];
+    const now = new Date();
+    const stale = leads.filter(l => {
+      if (!l.lastFollowUp || l.status === "Closed" || l.status === "Lost") return false;
+      const last = new Date(l.lastFollowUp);
+      const days = Math.floor((now - last) / 86400000);
+      return days >= 3;
+    }).map(l => {
+      const days = Math.floor((now - new Date(l.lastFollowUp)) / 86400000);
+      return `${l.name} (${l.status}, ${days} days since contact, $${l.dealValue || "?"})`;
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return res.status(502).json({ error: `Anthropic API error: ${errText}` });
+    if (stale.length === 0) {
+      return res.json({ alerts: [] });
     }
 
-    const data = await response.json();
-    const rawText = (data.content?.[0]?.text || "").trim();
+    userPrompt = `These leads haven't been contacted recently. Generate short, direct follow-up alerts (1 sentence each, COO tone).
 
-    // Extract JSON safely
-    const match = rawText.match(/\{[\s\S]*\}/);
-    if (!match) {
-      return res.status(500).json({ error: "AI response did not contain valid JSON", raw: rawText });
-    }
+Stale leads: ${stale.join(" | ")}
 
-    const parsed = JSON.parse(match[0]);
-    return res.json(parsed);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+Return ONLY this JSON:
+{
+  "alerts": [
+    { "name": "lead name", "message": "direct one-sentence alert about this specific lead" }
+  ]
+}`;
+
+  } else if (type === "copilot_chat") {
+    isChat = true;
+    // messages is an array of {role, content} — pass directly
+  } else {
+    return res.status(400).json({ error: "Unknown type" });
+  }
+
+  try {
+    const body = isChat
+      ? { model: "claude-sonnet-4-6", max_tokens: 1024, system: SYSTEM, messages: messages || [] }
+      : { model: "claude-sonnet-4-6", max_tokens: 1024, system: SYSTEM, messages: [{ role: "user", content: userPrompt }] };
+
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify(body),
+    });
+
+    if (!r.ok) return res.status(502).json({ error: await r.text() });
+
+    const data = await r.json();
+    const text = (data.content?.[0]?.text || "").trim();
+
+    if (isChat) return res.json({ reply: text });
+
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return res.status(500).json({ error: "No JSON in response", raw: text });
+    return res.json(JSON.parse(match[0]));
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }
